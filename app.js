@@ -9,7 +9,8 @@ const hpp = require('hpp');
 
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/error/errorController');
-const userRouter = require('../talkwizard/routes/client/userRoutes');
+// const userRouter = require('../talkwizard/routes/client/userRoutes');
+const advisorRouter = require(path.join(__dirname, 'routes', 'client', 'userRoutes'));
 const advisorRouter = require(path.join(__dirname, 'routes', 'advisor', 'advisorRoutes'));
 const contactRouter = require('../talkwizard/routes/contact/contactRoutes');
 const adminRouter = require('../talkwizard/routes/admin/adminRoutes');
