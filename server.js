@@ -27,8 +27,9 @@ mongoose
 
 const app = require('./app');
 
+const host = "0.0.0.0";
 const port = process.env.PORT || 5000;
-const server = app.listen(port, () => {
+const server = app.listen(port, host, () => {
   console.log(`App running on port ${port}...`);
 });
 
