@@ -9,19 +9,18 @@ const hpp = require('hpp');
 
 const AppError = require('./utils/appError');
 const globalErrorHandler = require('./controllers/error/errorController');
-// const userRouter = require('../talkwizard/routes/client/userRoutes');
 const userRouter = require(path.join(__dirname, 'routes', 'client', 'userRoutes'));
 const advisorRouter = require(path.join(__dirname, 'routes', 'advisor', 'advisorRoutes'));
-const contactRouter = require('../talkwizard/routes/contact/contactRoutes');
-const adminRouter = require('../talkwizard/routes/admin/adminRoutes');
-const blogRouter = require('../talkwizard/routes/blog/blogRoutes');
-const likeRouter = require('../talkwizard/routes/reaction/likeRoutes');
-const dislikeRouter = require('../talkwizard/routes/reaction/dislikeRoutes');
-const upvoteRouter = require('../talkwizard/routes/reaction/upvoteRoutes');
-const reviewRouter = require('../talkwizard/routes/reaction/reviewRoutes');
-const testimonialRouter = require('../talkwizard/routes/testimonial/testimonialRoutes');
-const serviceRouter = require('../talkwizard/routes/service/serviceRoutes');
-const categoryRouter = require('../talkwizard/routes/category/categoryRoutes');
+const contactRouter = require(path.join(__dirname, 'routes', 'contact', 'contactRoutes'));
+const adminRouter = require(path.join(__dirname, 'routes', 'admin', 'adminRoutes'));
+const blogRouter = require(path.join(__dirname, 'routes', 'blog', 'blogRoutes'));
+const likeRouter = require(path.join(__dirname, 'routes', 'reaction', 'likeRoutes'));
+const dislikeRouter = require(path.join(__dirname, 'routes', 'reaction', 'dislikeRoutes'));
+const upvoteRouter = require(path.join(__dirname, 'routes', 'reaction', 'upvoteRoutes'));
+const reviewRouter = require(path.join(__dirname, 'routes', 'reaction', 'reviewRoutes'));
+const testimonialRouter = require(path.join(__dirname, 'routes', 'testimonial', 'testimonialRoutes'));
+const serviceRouter = require(path.join(__dirname, 'routes', 'service', 'serviceRoutes'));
+const categoryRouter = require(path.join(__dirname, 'routes', 'category', 'categoryRoutes'));
 
 const app = express();
 
