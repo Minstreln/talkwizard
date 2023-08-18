@@ -1,4 +1,3 @@
-// step 41, refactoring api features
 class APIFeatures {
     constructor(query, queryString) {
       this.query = query;
@@ -11,7 +10,6 @@ class APIFeatures {
       const excludedFields = ['page', 'sort', 'limit', 'fields'];
       excludedFields.forEach((el) => delete queryObj[el]);
   
-      // STEP  36, advances filtering
       let queryStr = JSON.stringify(queryObj);
       queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
   

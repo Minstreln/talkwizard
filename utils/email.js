@@ -1,14 +1,16 @@
 
 const nodemailer = require('nodemailer');
+const htmlToText = require('html-to-text');
 
 const sendMail = async (options) => {
   const transporter = nodemailer.createTransport({
+    service: 'gmail',
     host: process.env.EMAIL_HOST,
     port: process.env.EMAIL_PORT,
     secure: false,
     auth: {
-      user: process.env.EMAIL_USERNAME, //save in config.env
-      pass: process.env.EMAIL_PASSWORD, //save in config.env
+      user: process.env.EMAIL_USERNAME, 
+      pass: process.env.EMAIL_PASSWORD,
     },
     tls: {
       rejectUnauthorized: true,
@@ -18,7 +20,7 @@ const sendMail = async (options) => {
     from: 'Minstrel Nwachukwu <minstrel@gmail.com>',
     to: options.email,
     subject: options.subject,
-    text: options.message,
+    html: options.message,
   };
 
   await transporter.sendMail(mailOptions);

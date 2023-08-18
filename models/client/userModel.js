@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
+const Admin = require('./../admin/adminModel');
 
 const userSchema = new mongoose.Schema({
   firstName: {
@@ -22,95 +23,24 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     validate: [validator.isEmail, 'Please provide a valid Email'],
   },
-  photo: String,
   role: {
     type: String,
     enum: ['client', 'advisor', 'admin'],
-    default: 'advisor',
+    default: 'client',
   },
   phone: {
     type: String,
     required: [true, 'Please provide a phone number with your country code at the beginning.'],
     unique: true,
   },
-  aadharNo: {
+  uniqueID: {
     type: String,
-    required: [true, 'Please provide aadhar No'],
-    unique: true,
-  },
-  panNo: {
-    type: String,
-    required: [true, 'Please provide aadhar No'],
-    unique: true,
-  },
-  sebiNo: {
-    type: String,
-    required: [true, 'Please provide sebi No'],
-    unique: true,
-  },
-  birthDate: {
-    type: String,
-    required: [true, 'Please provide Email'],
-    lowercase: true,
-    validate: [validator.isDate, 'Please provide a valid Email'],
-  },
-  experience: {
-    type: Number,
-    required: [true, 'Please provide a valid number of years'],
-  },
-  gender: {
-    type: String,
-    required: [true, 'Please select your gender'],
-  },
-  qualification: {
-    type: String,
-    required: [true, 'Please provide qualification'],
-  },
-  language: {
-    type: String,
-    required: [true, 'Please provide a language'],
-  },
-  websiteLink: String,
-  skills: {
-    type: [String],
     required: true,
-    validate: {
-      validator: function(arr) {
-        return arr.length >= 2;
-      },
-      message: 'Please provide at least two skills',
-    },
+    unique: true,
   },
-  companyName: String,
-  companyAddress: String,
-  companyLink: String,
-  instagramLink: String,
-  facebookLink: String,
-  twitterLink: String,
-  youtubeLink: String,
-  siteTime: {
-    type: Number,
-    required: [true, 'Please enter a number of hours']
-  },
-  startTime: {
+  photo: {
     type: String,
-    validate: {
-      validator: function(value) {
-        const timePattern = /^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/i;
-        return timePattern.test(value);
-      },
-      message: 'Please provide a valid start time',
-    },
-  },
-  endTime: {
-    type: String,
-    validate: {
-      validator: function(value) {
-        const timePattern = /^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/i;
-        return timePattern.test(value);
-      },
-      message: 'Please provide a valid end time',
-    },
+    default: 'default.jpg',
   },
   password: {
     type: String,
@@ -134,6 +64,11 @@ const userSchema = new mongoose.Schema({
   active: {
     type: Boolean,
     default: true,
+    select: false,
+  },
+  isBanned: {
+    type: Boolean,
+    default: false,
     select: false,
   },
 });

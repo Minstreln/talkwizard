@@ -2,10 +2,46 @@ const { promisify } = require('util');
 // eslint-disable-next-line import/no-extraneous-dependencies
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const User = require('../models/userModel');
-const catchAsync = require('../utils/catchAsync');
-const AppError = require('../utils/appError');
-const sendMail = require('../utils/email');
+const { v4: uuidv4 } = require('uuid');
+const User = require('../../models/client/userModel');
+const Admin = require('../../models/admin/adminModel');
+const Advisor = require('../../models/advisor/advisorModel');
+const catchAsync = require('../../utils/catchAsync');
+const AppError = require('../../utils/appError');
+const sendMail = require('../../utils/email');
+const multer = require('multer');
+const sharp = require('sharp');
+
+const multerStorage = multer.memoryStorage();
+
+const multerFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image')) {
+    cb(null, true)
+  } else {
+    cb(new AppError('Not an image, please upload only Images', 400), false)
+  };
+};
+
+const upload = multer({ 
+  storage: multerStorage,
+  fileFilter: multerFilter,
+});
+
+exports.uploadClientPhoto = upload.single('photo');
+
+exports.resizeClientPhoto = (req, res, next) => {
+  if (!req.file) return next();
+
+  req.file.filename = `client-${uuidv4()}-${Date.now()}.jpeg`;
+
+  sharp(req.file.buffer)
+    .resize(500, 500)
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })
+    .toFile(`public/img/clients/${req.file.filename}`);
+
+    next();
+};
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -37,11 +73,14 @@ const createSendToken = (user, statusCode, res) => {
 };
 
 exports.signup = catchAsync(async (req, res, next) => {
+  const uniqueID = `TZU${uuidv4().replace(/-/g, '').substring(0, 4)}`;
   const newUser = await User.create({
     firstName: req.body.firstName,
     lastName: req.body.lastName,
     email: req.body.email,
     phone: req.body.phone,
+    uniqueID,
+    photo: req.file && req.file.filename,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
   });
@@ -56,14 +95,29 @@ exports.login = catchAsync(async (req, res, next) => {
     return next(new AppError('Please Provide username and password', 400));
   }
 
-  const user = await User.findOne({ userName }).select('+password');
+  const user = await User.findOne({ userName }).select('+password +isBanned');
 
   if (!user || !(await user.correctPassword(password, user.password))) {
     return next(new AppError('Incorrect Username Or Password', 401));
   }
 
+  if (user.isBanned === true) {
+    return next(new AppError('You are banned. Please contact the administrator for further information.', 403));
+  }
+
   createSendToken(user, 200, res);
 });
+
+exports.logout = (req, res) => {
+  res.cookie('jwt', 'loggedout', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+  res.status(200).json({
+    status: 'success',
+    message: 'Logged Out Successfully, refresh page',
+  });
+};
 
 exports.protect = catchAsync(async (req, res, next) => {
   let token;
@@ -75,19 +129,30 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   if (!token) {
-    return next(new AppError('Please log in to get Access', 401));
+    return next(new AppError('Please log in to get access', 401));
   }
 
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
-  const currentUser = await User.findById(decoded.id);
+  let currentUser;
+
+  currentUser = await Advisor.findById(decoded.id);
+
   if (!currentUser) {
-    return next(new AppError('The token does no longer exist', 401));
+    currentUser = await Admin.findById(decoded.id);
+  }
+
+  if (!currentUser) {
+    currentUser = await User.findById(decoded.id);
+  }
+
+  if (!currentUser) {
+    return next(new AppError('The token does not exist', 401));
   }
 
   if (currentUser.changedPasswordAfter(decoded.iat)) {
     return next(
-      new AppError('User recently changed password! please log in again')
+      new AppError('User recently changed password! Please log in again', 401)
     );
   }
 
@@ -120,7 +185,12 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
     'host'
   )}/api/v1/users/resetPassword/${resetToken}`;
 
-  const message = `Forgot  your password? Submit PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email`;
+  const message = `
+  <h1>Forgot Your Password?</h1>
+  <p>Please follow the link below to change your password</p>
+  <p><a href="${resetURL}">${resetURL}</a></p>
+  <p>If you didn't forget your password, please ignore this email.</p>
+  `;
 
   try {
     await sendMail({

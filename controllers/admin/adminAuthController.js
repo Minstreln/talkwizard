@@ -2,10 +2,12 @@ const { promisify } = require('util');
 // eslint-disable-next-line import/no-extraneous-dependencies
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const User = require('../models/userModel');
-const catchAsync = require('../utils/catchAsync');
-const AppError = require('../utils/appError');
-const sendMail = require('../utils/email');
+const Admin = require('../../models/admin/adminModel');
+const Advisor = require('../../models/advisor/advisorModel');
+const User = require('../../models/client/userModel');
+const catchAsync = require('../../utils/catchAsync');
+const AppError = require('../../utils/appError');
+const sendMail = require('../../utils/email');
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -36,39 +38,6 @@ const createSendToken = (user, statusCode, res) => {
   });
 };
 
-exports.signup = catchAsync(async (req, res, next) => {
-  const newUser = await User.create({
-    firstName: req.body.firstName,
-    lastName: req.body.lastName,
-    email: req.body.email,
-    phone: req.body.phone,
-    aadharNo: req.body.aadharNo,
-    panNo: req.body.panNo,
-    sebiNo: req.body.sebiNo,
-    birthDate: req.body.birthDate,
-    experience: req.body.experience,
-    gender: req.body.gender,
-    qualification: req.body.qualification,
-    language: req.body.language,
-    websiteLink: req.body.websiteLink,
-    skills: req.body.skills,
-    companyName: req.companyName,
-    companyAddress: req.companyAddress,
-    companyLink: req.companyLink,
-    instagramLink: req.instagramLink,
-    facebookLink: req.facebookLink,
-    twitterLink: req.twitterLink,
-    youtubeLink: req.youtubeLink,
-    siteTime: req.siteTime,
-    startTime: req.startTime,
-    endTime: req.endTime,
-    password: req.body.password,
-    passwordConfirm: req.body.passwordConfirm,
-  });
-
-  createSendToken(newUser, 201, res);
-});
-
 exports.login = catchAsync(async (req, res, next) => {
   const { userName, password } = req.body;
 
@@ -76,14 +45,25 @@ exports.login = catchAsync(async (req, res, next) => {
     return next(new AppError('Please Provide username and password', 400));
   }
 
-  const user = await User.findOne({ userName }).select('+password');
+  const admin = await Admin.findOne({ userName }).select('+password');
 
-  if (!user || !(await user.correctPassword(password, user.password))) {
+  if (!admin || !(await admin.correctPassword(password, admin.password))) {
     return next(new AppError('Incorrect Username Or Password', 401));
   }
 
-  createSendToken(user, 200, res);
+  createSendToken(admin, 200, res);
 });
+
+exports.logout = (req, res) => {
+  res.cookie('jwt', 'loggedout', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+  res.status(200).json({
+    status: 'success',
+    message: 'Logged Out Successfully, refresh page',
+  });
+};
 
 exports.protect = catchAsync(async (req, res, next) => {
   let token;
@@ -95,19 +75,20 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
 
   if (!token) {
-    return next(new AppError('Please log in to get Access', 401));
+    return next(new AppError('Please log in to get access', 401));
   }
 
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
-  const currentUser = await User.findById(decoded.id);
+  const currentUser = await Admin.findById(decoded.id);
+
   if (!currentUser) {
-    return next(new AppError('The token does no longer exist', 401));
+    return next(new AppError('The token does not exist', 401));
   }
 
   if (currentUser.changedPasswordAfter(decoded.iat)) {
     return next(
-      new AppError('User recently changed password! please log in again')
+      new AppError('User recently changed password! Please log in again', 401)
     );
   }
 
@@ -128,23 +109,28 @@ exports.restrictTo =
   };
 
 exports.forgotPassword = catchAsync(async (req, res, next) => {
-  const user = await User.findOne({ email: req.body.email });
-  if (!user) {
+  const admin = await Admin.findOne({ email: req.body.email });
+  if (!admin) {
     return next(new AppError('There is no user with that email address'), 404);
   }
 
-  const resetToken = user.createPasswordResetToken();
-  await user.save({ validateBeforeSave: false });
+  const resetToken = admin.createPasswordResetToken();
+  await admin.save({ validateBeforeSave: false });
 
   const resetURL = `${req.protocol}://${req.get(
     'host'
   )}/api/v1/users/resetPassword/${resetToken}`;
 
-  const message = `Forgot  your password? Submit PATCH request with your new password and passwordConfirm to: ${resetURL}.\nIf you didn't forget your password, please ignore this email`;
+  const message = `
+  <h1>Forgot Your Password?</h1>
+  <p>Please follow the link below to change your password</p>
+  <p><a href="${resetURL}">${resetURL}</a></p>
+  <p>If you didn't forget your password, please ignore this email.</p>
+  `;
 
   try {
     await sendMail({
-      email: user.email,
+      email: admin.email,
       subject: 'Your password reset token (Valid for only 10mins)',
       message,
     });
@@ -154,9 +140,9 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
       message: 'Token sent to email!',
     });
   } catch (err) {
-    user.passwordResetToken = undefined;
-    user.passwordResetExpired = undefined;
-    await user.save({ validateBeforeSave: false });
+    admin.passwordResetToken = undefined;
+    admin.passwordResetExpired = undefined;
+    await admin.save({ validateBeforeSave: false });
 
     return next(
       new AppError('There was an error sending the email, try again later.'),
@@ -171,34 +157,34 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
     .update(req.params.token)
     .digest('hex');
 
-  const user = await User.findOne({
+  const admin = await Admin.findOne({
     passwordResetToken: hashedToken,
     passwordResetExpires: { $gt: Date.now() },
   });
 
-  if (!user) {
+  if (!admin) {
     return next(new AppError('Token is Invalid or has expired'), 400);
   }
 
-  user.password = req.body.password;
-  user.passwordConfirm = req.body.passwordConfirm;
-  user.passwordResetToken = undefined;
-  user.passwordResetExpires = undefined;
-  await user.save();
+  admin.password = req.body.password;
+  admin.passwordConfirm = req.body.passwordConfirm;
+  admin.passwordResetToken = undefined;
+  admin.passwordResetExpires = undefined;
+  await admin.save();
 
-  createSendToken(user, 200, res);
+  createSendToken(admin, 200, res);
 });
 
 exports.updatePassword = catchAsync(async (req, res, next) => {
-  const user = await User.findById(req.user.id).select('+password');
+  const admin = await Admin.findById(req.user.id).select('+password');
 
-  if (!(await user.correctPassword(req.body.passwordCurrent, user.password))) {
+  if (!(await admin.correctPassword(req.body.passwordCurrent, admin.password))) {
     return next(new AppError('Your current password is wrong'), 401);
   }
 
-  user.password = req.body.password;
-  user.passwordConfirm = req.body.passwordConfirm;
-  await user.save();
+  admin.password = req.body.password;
+  admin.passwordConfirm = req.body.passwordConfirm;
+  await admin.save();
 
-  createSendToken(user, 200, res);
+  createSendToken(admin, 200, res);
 });

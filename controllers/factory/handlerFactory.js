@@ -1,6 +1,6 @@
-const catchAsync = require('../utils/catchAsync');
-const AppError = require('../utils/appError');
-const APIFeatures = require('../utils/apiFeatures');
+const catchAsync = require('../../utils/catchAsync');
+const AppError = require('../../utils/appError');
+const APIFeatures = require('../../utils/apiFeatures');
 
 exports.deleteOne = (Model) =>
   catchAsync(async (req, res, next) => {
@@ -69,7 +69,7 @@ exports.getAll = (Model) =>
   catchAsync(async (req, res, next) => {
     console.log(req.query);
     let filter = {};
-    if (req.params.tourId) filter = { tour: req.params.tourId };
+    if (req.params.advisorId) filter = { advisor: req.params.advisorId };
 
     const features = new APIFeatures(Model.find(filter), req.query)
       .filter()
